@@ -12,9 +12,6 @@ import Foundation
 class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSource {
 
     
-    // Data model: These strings will be the data for the table view cells
-    let dataArray: [String] = ["Horse Horse Horse Horse Horse Horse Horse Horse Horse Horse Horse Horse Horse", "Cow", "Camel", "Sheep", "Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs Cats & Dogs", "Other Pets\n\n"]
-    
     //Create global array to put responseData into for TableView
     var responseDataArray = [String]()
     var htmlResponseString = String()
@@ -46,8 +43,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         var deviceModel = String()
         if screenSizeHeight == 667 {
             deviceModel = "iPhone6"
-        }
-        if screenSizeHeight == 736 {
+        } else if screenSizeHeight == 736 {
             deviceModel = "iPhone6+"
         }
         print("DeviceModel:", deviceModel)
@@ -100,8 +96,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         if deviceModel == "iPhone6" {
             closeButton.center = CGPoint(x:88, y:500)
             saveButton.center = CGPoint(x:265, y:500)
-        }
-        if deviceModel == "iPhone6+" {
+        } else if deviceModel == "iPhone6+" {
             closeButton.center = CGPoint(x:112, y:540)
             saveButton.center = CGPoint(x:288, y:540)
         }
@@ -118,8 +113,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             //getData()
             performSelector(inBackground: #selector(getData), with: nil)
             //performSelector(inBackground: #selector(jsonData), with: nil)
-        }
-        else{
+        } else{
             print("Data Connection: NO")
             //Show AlertView
         }
@@ -137,6 +131,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     //////////////////////////////////////////////////////////////////////////////////////////
     
    
+    //NOT WORKING YET///
     
     func jsonData() {
         print("\n\n(JSON DATA)")
@@ -273,9 +268,21 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             let task = URLSession.shared.dataTask(with: url!) { (data, response, error) in
                 if let data = data,
                     let htmlResponse = String(data: data, encoding: String.Encoding.utf8) {
-                    self.htmlResponseString = htmlResponse
                     
-                    self.parseData()
+                    print("Response:", htmlResponse)
+                    if htmlResponse.contains("page not found") {
+                        print("Response Data Not Valid")
+                        let myAlert = UIAlertController(title: "Error!", message: "URL Data Not Valid", preferredStyle: UIAlertControllerStyle.alert)
+                        myAlert.addAction(UIAlertAction(title: "Ok", style: UIAlertActionStyle.default, handler: nil))
+                        self.present(myAlert, animated: true, completion: nil)
+                    } else {
+                        print("Response Data is Valid")
+                        self.htmlResponseString = htmlResponse
+                        self.parseData()
+                    }
+                    
+                    
+                    
                     //performSelector(onMainThread: #selector(parseData), with: nil, waitUntilDone: false) //Use here or in next method?
                     //self.responseDataArray = self.htmlResponseString.components(separatedBy: "data-rank=") //Split Full HTML Response by Article Postings
                     //self.tableView.performSelector(onMainThread: #selector(UITableView.reloadData), with: nil, waitUntilDone: false)
@@ -367,8 +374,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
                 thumbString = thumbString.replacingOccurrences(of: "//", with: "")
                 thumbString = "http://" + thumbString
                 print("THUMBURL: ", thumbString)
-            }
-            else {
+            } else {
                 //print("NO Image Source!")
                 thumbString = "NO IMAGE"
                 print("THUMBURL: ", thumbString)
@@ -379,8 +385,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             if thumbString=="NO IMAGE" {
                 fullImageString = "NO IMAGE"
                 print("FULLIMAGEURL: ", fullImageString)
-            }
-            else {
+            } else {
                 if articleStringFull.contains("media-preview-content&quot;&gt; &lt;a href=&quot;") {
                     let fullImageArray = articleStringFull.components(separatedBy: "media-preview-content&quot;&gt; &lt;a href=&quot;")
                     fullImageString = fullImageArray[1]
@@ -388,8 +393,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
                     fullImageString = fullImageArray2[0]
                     fullImageString = fullImageString.replacingOccurrences(of: ".gifv", with: ".gif")//&quot
                     print("FULLIMAGEURL: ", fullImageString)
-                }
-                else {
+                } else {
                     //If full quality image can't be found, will use thumbnail image.
                     fullImageString = thumbString
                     print("FULLIMAGEURL: ", fullImageString)
@@ -480,8 +484,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         if thumbString == "NO IMAGE" {
             //No Image Available
             print(thumbString)
-        }
-        else {
+        } else {
             //Image Is Available
             //CONCURRENT LOADING//
             let url = URL(string: thumbString)
@@ -540,25 +543,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         if imageURLString == "NO IMAGE" {
             print(imageURLString)
             //Don't open Image View
-        }
-        else {
-
-            /*
-            //CONCURRENTLY LOAD IMAGES FOR SMOOTH PERFORMANCE//
-            let dispatchQueue = DispatchQueue(label: "com.app.dispatchQueue", qos: .utility, attributes: .concurrent)
-            dispatchQueue.async {
-                //Load Thumbnail from URL into ImageView
-                if let url = NSURL(string: imageURLString) {
-                    if let data = NSData(contentsOf: url as URL) {
-                        //self.image = UIImage(data: data as Data)
-                        self.articleImageView.image = UIImage(data: data as Data)
-                        self.activityIndicator.isHidden = true
-                        self.saveButton.isEnabled = true
-                    }
-                }
-            }
-            */
-            
+        } else {
             let url = URL(string: imageURLString)
             DispatchQueue.global().async {
                 let data = try? Data(contentsOf: url!) //make sure your image in this url does exist, otherwise unwrap in a if let check / try-catch
@@ -571,9 +556,6 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             }
         
         
-            
-            
-            
             //Delay or use loading graphic
             //Open View with ImageView
             viewForFullImage.isHidden = false
@@ -610,7 +592,6 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         
         
         UIImageWriteToSavedPhotosAlbum(articleImageView.image!, self, nil, nil) //Try setting ComplettionSelector (3rd parameter)
-        //TODO: FIX- Edit Plist to allow access
         
         
         viewForFullImage.isHidden = true
