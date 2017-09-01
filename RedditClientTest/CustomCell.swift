@@ -12,4 +12,8 @@ import UIKit
 class CustomCell: UITableViewCell {
     @IBOutlet weak var cellLabel: UILabel!
     @IBOutlet weak var thumbailImage: UIImageView!
+    
+    @IBOutlet weak var authorLabel: UILabel!
+    @IBOutlet weak var timeLabel: UILabel!
+    @IBOutlet weak var commentsLabel: UILabel!
 }

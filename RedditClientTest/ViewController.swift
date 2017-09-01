@@ -56,11 +56,11 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         
         
         ////POSITION UI ELEMENTS////
-        toolbarView.frame = CGRect(x: 0, y: 20, width: UIScreen.main.bounds.width, height: 44)
+        //toolbarView.frame = CGRect(x: 0, y: 20, width: UIScreen.main.bounds.width, height: 44)
         toolbarView.layer.shadowOffset = CGSize(width: 0, height: 2)
         toolbarView.layer.shadowRadius = 4
         toolbarView.layer.shadowOpacity = 0.3
-        
+ 
         
         tableView.delegate = self
         tableView.dataSource = self
@@ -71,29 +71,32 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         
         
         //TODO:Test this on different sizes
-        tableView.frame = CGRect(x: 0, y: 64, width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height-64) //(OriginX, OriginY, Height, Width
+        //tableView.frame = CGRect(x: 0, y: 64, width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height-64) //(OriginX, OriginY, Height, Width
         
         
         
-    
+        
         
         //POSITION SUBVIEW FOR FULL IMAGE VIEW & BUTTONS//
-        viewForFullImage.frame = CGRect(x: 0, y: 22, width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height) //(OriginX, OriginY, Height, Width
-        viewForFullImage.backgroundColor = UIColor(red: 0/255.0, green: 0/255.0, blue: 0/255.0, alpha: 0.8)
+        //viewForFullImage.frame = CGRect(x: 0, y: 22, width: UIScreen.main.bounds.width, height: UIScreen.main.bounds.height) //(OriginX, OriginY, Height, Width
+        viewForFullImage.backgroundColor = UIColor(red: 0/255.0, green: 0/255.0, blue: 0/255.0, alpha: 0.86)
         viewForFullImage.isHidden = true
         
         
-        articleImageView.frame = CGRect(x: 50, y: 100, width: UIScreen.main.bounds.width-60, height: UIScreen.main.bounds.height-320)
-        articleImageView.center = CGPoint(x:UIScreen.main.bounds.width/2, y:(UIScreen.main.bounds.height/2)-80)
+        //articleImageView.frame = CGRect(x: 50, y: 100, width: UIScreen.main.bounds.width-60, height: UIScreen.main.bounds.height-320)
+        //articleImageView.center = CGPoint(x:UIScreen.main.bounds.width/2, y:(UIScreen.main.bounds.height/2)-80)
         articleImageView.backgroundColor = UIColor(red: 0/255.0, green: 0/255.0, blue: 0/255.0, alpha: 0.8)
         articleImageView.layer.cornerRadius = 8
-        articleImageView.clipsToBounds = true
+        //articleImageView.clipsToBounds = true
+        articleImageView.layer.shadowOffset = CGSize(width: 2, height: 6)
+        articleImageView.layer.shadowRadius = 8
+        articleImageView.layer.shadowOpacity = 0.8
         
-        activityIndicator.center = CGPoint(x:UIScreen.main.bounds.width/2, y:(UIScreen.main.bounds.height/2)-80)
+        //activityIndicator.center = CGPoint(x:UIScreen.main.bounds.width/2, y:(UIScreen.main.bounds.height/2)-80)
         
         
         
-        
+        /*
         if deviceModel == "iPhone6" {
             closeButton.center = CGPoint(x:88, y:500)
             saveButton.center = CGPoint(x:265, y:500)
@@ -102,7 +105,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             closeButton.center = CGPoint(x:112, y:540)
             saveButton.center = CGPoint(x:288, y:540)
         }
-        
+        */
         
         
         
@@ -294,7 +297,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     func parseData() {
         print("\n\n(PARSE DATA)")
         
-        print(htmlResponseString)
+        //print(htmlResponseString)
         
         //// MANUAL HTML PARSING ////
         //Create Array from String//
@@ -319,6 +322,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             var titleString = titleArray[2]
             let titleArray2 = titleString.components(separatedBy: "<") //Remove text after Element
             titleString = titleArray2[0]
+            titleString = titleString.replacingOccurrences(of: "&quot", with: "")
             print("TITLE: ", titleString)
             
             
@@ -382,7 +386,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
                     fullImageString = fullImageArray[1]
                     let fullImageArray2 = fullImageString.components(separatedBy: "&quot")
                     fullImageString = fullImageArray2[0]
-                    fullImageString = fullImageString.replacingOccurrences(of: ".gifv", with: ".gif")
+                    fullImageString = fullImageString.replacingOccurrences(of: ".gifv", with: ".gif")//&quot
                     print("FULLIMAGEURL: ", fullImageString)
                 }
                 else {
@@ -447,8 +451,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         //Cell Design
         //customCell.cellLabel.textColor = CGColor
         customCell.thumbailImage.layer.cornerRadius = 5
-        customCell.thumbailImage.clipsToBounds = true
-        
+        //customCell.thumbailImage.clipsToBounds = true
         
         
         
@@ -467,29 +470,32 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         
         //SET VALUES TO UI LABELS//
         customCell.cellLabel.text = articleDataArray[0]
-        //customCell.authorLabel.text = articleDataArray[1]
+        customCell.authorLabel.text = articleDataArray[1]
         //customCell.commentsLabel.text = articleDataArray[2]
-        //customCell.timeLabel.text = articleDataArray[3]
+        customCell.timeLabel.text = articleDataArray[3]
         let thumbString = articleDataArray[4]
         
         
+        //CHECK IF POST HAS AN IMAGE//
         if thumbString == "NO IMAGE" {
+            //No Image Available
             print(thumbString)
         }
         else {
-            //CONCURRENTLY LOAD IMAGES FOR SMOOTH PERFORMANCE//
-            let dispatchQueue = DispatchQueue(label: "com.app.dispatchQueue", qos: .utility, attributes: .concurrent)
-            dispatchQueue.async {
-                //Load Thumbnail from URL into ImageView
-                if let url = NSURL(string: thumbString) {
-                    if let data = NSData(contentsOf: url as URL) {
-                        //self.image = UIImage(data: data as Data)
-                        customCell.thumbailImage.image = UIImage(data: data as Data) //TODO: Check if better to move on MainThread?
-                    }
+            //Image Is Available
+            //CONCURRENT LOADING//
+            let url = URL(string: thumbString)
+            DispatchQueue.global().async {
+                let data = try? Data(contentsOf: url!) //make sure your image in this url does exist, otherwise unwrap in a if let check / try-catch
+                DispatchQueue.main.async {
+                    customCell.thumbailImage.image = UIImage(data: data!)
                 }
             }
-        
-        
+            //Add shadow effect for posts with images
+            customCell.thumbailImage.layer.shadowOffset = CGSize(width: 1, height: 2)
+            customCell.thumbailImage.layer.shadowRadius = 2
+            customCell.thumbailImage.layer.shadowOpacity = 0.4
+            
         }
         
         
@@ -536,6 +542,8 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             //Don't open Image View
         }
         else {
+
+            /*
             //CONCURRENTLY LOAD IMAGES FOR SMOOTH PERFORMANCE//
             let dispatchQueue = DispatchQueue(label: "com.app.dispatchQueue", qos: .utility, attributes: .concurrent)
             dispatchQueue.async {
@@ -543,12 +551,28 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
                 if let url = NSURL(string: imageURLString) {
                     if let data = NSData(contentsOf: url as URL) {
                         //self.image = UIImage(data: data as Data)
-                        self.articleImageView.image = UIImage(data: data as Data) //TODO: Check if better to move on MainThread?
+                        self.articleImageView.image = UIImage(data: data as Data)
                         self.activityIndicator.isHidden = true
                         self.saveButton.isEnabled = true
                     }
                 }
             }
+            */
+            
+            let url = URL(string: imageURLString)
+            DispatchQueue.global().async {
+                let data = try? Data(contentsOf: url!) //make sure your image in this url does exist, otherwise unwrap in a if let check / try-catch
+                DispatchQueue.main.async {
+                    self.articleImageView.image = UIImage(data: data!)
+                    //self.articleImageView.image = UIImage(data: data as Data)
+                    self.activityIndicator.isHidden = true
+                    self.saveButton.isEnabled = true
+                }
+            }
+        
+        
+            
+            
             
             //Delay or use loading graphic
             //Open View with ImageView
@@ -591,6 +615,11 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         
         viewForFullImage.isHidden = true
         articleImageView.image = nil
+        
+        
+        let myAlert = UIAlertController(title: "Photo Saved!", message: ":)", preferredStyle: UIAlertControllerStyle.alert)
+        myAlert.addAction(UIAlertAction(title: "Ok", style: UIAlertActionStyle.default, handler: nil))
+        self.present(myAlert, animated: true, completion: nil)
     }
     
     
