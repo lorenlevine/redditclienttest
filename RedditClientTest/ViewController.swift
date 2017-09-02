@@ -13,9 +13,14 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
 
     
     //Create global array to put responseData into for TableView
-    var responseDataArray = [String]()
     var htmlResponseString = String()
+    var responseDataArray = [String]()
     var parsedDataArray = [String]()
+    var responseDataLinkArray = [String]()
+    
+    //var urlString = "https://www.reddit.com/top/"
+    var nextResultsString = String()
+    
     
     // don't forget to hook this up from the storyboard
     @IBOutlet var tableView: UITableView!
@@ -105,13 +110,12 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         
         
         
-        
-        
+        let urlString = "https://www.reddit.com/top/"
         ////CHECK IF DATA CONNECTION AVAILABLE////
         if ConnectionCheck.isConnectedToNetwork() {
             print("Data Connection: YES")
             //getData()
-            performSelector(inBackground: #selector(getData), with: nil)
+            performSelector(inBackground: #selector(getData(url:)), with: urlString)
             //performSelector(inBackground: #selector(jsonData), with: nil)
         } else{
             print("Data Connection: NO")
@@ -253,23 +257,24 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     }
 
     
+    //PAGING: Use global variable for passing & updating link
+    //TODO: Try using RSS feed for easier parsing
     
     
-    func getData() {
+    func getData(url:String) {
         print("\n\n(GET DATA)")
         
-        //TODO: Use completion handler, continue with parsing after data acquired
-        
-        
-        
+        print("URL String:", url) //Prints out correctly here.
+        //url = url.replacingOccurrences(of: " ", with: "")
         //let dispatchQueue = DispatchQueue(label: "com.app.dispatchQueue", qos: .utility, attributes: .concurrent)
         //dispatchQueue.async {
-            let url = URL(string: "https://www.reddit.com/top/") //https://www.reddit.com/top/.json
-            let task = URLSession.shared.dataTask(with: url!) { (data, response, error) in
+        let trimmedURL = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let dataURL = URL(string: trimmedURL) { //"https://www.reddit.com/top/"
+            //Only crashes after method is called 2nd time with updated 'urlString'
+            let task = URLSession.shared.dataTask(with: dataURL) { (data, response, error) in
                 if let data = data,
                     let htmlResponse = String(data: data, encoding: String.Encoding.utf8) {
-                    
-                    print("Response:", htmlResponse)
+                    //print("Response:", htmlResponse)
                     if htmlResponse.contains("page not found") {
                         print("Response Data Not Valid")
                         let myAlert = UIAlertController(title: "Error!", message: "URL Data Not Valid", preferredStyle: UIAlertControllerStyle.alert)
@@ -280,24 +285,23 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
                         self.htmlResponseString = htmlResponse
                         self.parseData()
                     }
-                    
-                    
-                    
-                    //performSelector(onMainThread: #selector(parseData), with: nil, waitUntilDone: false) //Use here or in next method?
-                    //self.responseDataArray = self.htmlResponseString.components(separatedBy: "data-rank=") //Split Full HTML Response by Article Postings
-                    //self.tableView.performSelector(onMainThread: #selector(UITableView.reloadData), with: nil, waitUntilDone: false)
                 }
             }
+        
             task.resume()
-            
+        } else {
+            print("DataURL is nil")
+        }
         //} //End DispatchQueue
 
     
         
     }
     
-    
-    
+   
+    func getDataTest(url:String) {
+        print("\n\n(GET DATA TEST)", url)
+    }
     
     
     
@@ -313,7 +317,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         
         //This can be done in TableView Delegate Method...
         //Print out array
-        print("Response DATA ARRAY:")
+        print("\nResponse DATA ARRAY:")
         var i = 1
         while i < responseDataArray.count {
             //print("•", responseDataArray[i])
@@ -322,8 +326,15 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             //MANUALLY PARSE HTML RESPONSE DATA//
             let articleStringFull = responseDataArray[i] //Get full response data for each article
             
-            print("\n")
-            print("[\(i)]")
+            //print("\n")
+            //print("[\(i)]")
+            //Extract Rank// data-rank="1" data-comments
+            let rankArray = articleStringFull.components(separatedBy: " data-comments")
+            var rankString = rankArray[0]
+            rankString = rankString.replacingOccurrences(of: "\"", with: "")
+            print("RANK: ", rankString)
+            
+            
             //Extract TITLE
             let titleArray = articleStringFull.components(separatedBy: "rel=\"\" >")
             var titleString = titleArray[2]
@@ -391,7 +402,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
                     fullImageString = fullImageArray[1]
                     let fullImageArray2 = fullImageString.components(separatedBy: "&quot")
                     fullImageString = fullImageArray2[0]
-                    fullImageString = fullImageString.replacingOccurrences(of: ".gifv", with: ".gif")//&quot
+                    fullImageString = fullImageString.replacingOccurrences(of: ".gifv", with: ".gif")
                     print("FULLIMAGEURL: ", fullImageString)
                 } else {
                     //If full quality image can't be found, will use thumbnail image.
@@ -402,9 +413,11 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
             
             
             
+            
+            
             //Add Parsed Strings to New Array for Access in TableView
-            let parsedArticleData = titleString + " [•] " + authorString + " [•] " + commentsString + " [•] " + timeString + " [•] " + thumbString + " [•] " + fullImageString
-            print("\nParsedArticleData ", parsedArticleData)
+            let parsedArticleData = rankString + " [•] " + titleString + " [•] " + authorString + " [•] " + commentsString + " [•] " + timeString + " [•] " + thumbString + " [•] " + fullImageString
+            print("\nParsedArticleData: ", parsedArticleData)
             parsedDataArray.append(parsedArticleData)
             
             
@@ -414,8 +427,22 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         }
         
         
+        ////Extract Link for Next Page////
+        
+        //class="next-button"><a href="https://www.reddit.com/top/?count=25&amp;after=t3_6xduef"
         
         
+        responseDataLinkArray = htmlResponseString.components(separatedBy: "next-button") //Split Full HTML Response by Article Postings
+        nextResultsString = responseDataLinkArray[1]
+        //print("\nNextLinkString: ", nextLinkString)
+        let nextLinkArray = nextResultsString.components(separatedBy: "rel=\"nofollow next\"")
+        nextResultsString = nextLinkArray[0]
+        //print("NextLinkString: ", nextLinkString)
+        nextResultsString = nextResultsString.replacingOccurrences(of: "\"", with: "")
+        nextResultsString = nextResultsString.replacingOccurrences(of: "amp;", with: "")
+        nextResultsString = nextResultsString.replacingOccurrences(of: "><a href=", with: "")
+        print("\nNextLinkString: ", nextResultsString)
+        //urlString = nextResultsString
         
         print("\n\n")
         
@@ -437,7 +464,7 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     // number of rows in table view
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         
-        let arrayCount = self.responseDataArray.count - 1
+        let arrayCount = self.parsedDataArray.count + 1
         
         return arrayCount
         
@@ -460,46 +487,63 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
         
         
         //ParsedDataArray Objects:
-        //[0]TITLE
-        //[1]AUTHOR
-        //[2]COMMENTS
-        //[3]TIME
-        //[4]THUMBNAIL
+        //[0]RANK
+        //[1]TITLE
+        //[2]AUTHOR
+        //[3]COMMENTS
+        //[4]TIME
+        //[5]THUMBNAIL
+        //[6]FULLIMAGE
         
         
-        //GET PRE-PARSED DATA ARRAY//
-        let articleDataString = parsedDataArray[indexPath.row]
-        let articleDataArray = articleDataString.components(separatedBy:" [•] ")
-        
-        
-        //SET VALUES TO UI LABELS//
-        customCell.cellLabel.text = articleDataArray[0]
-        customCell.authorLabel.text = articleDataArray[1]
-        //customCell.commentsLabel.text = articleDataArray[2]
-        customCell.timeLabel.text = articleDataArray[3]
-        let thumbString = articleDataArray[4]
-        
-        
-        //CHECK IF POST HAS AN IMAGE//
-        if thumbString == "NO IMAGE" {
-            //No Image Available
-            print(thumbString)
-        } else {
-            //Image Is Available
-            //CONCURRENT LOADING//
-            let url = URL(string: thumbString)
-            DispatchQueue.global().async {
-                let data = try? Data(contentsOf: url!) //make sure your image in this url does exist, otherwise unwrap in a if let check / try-catch
-                DispatchQueue.main.async {
-                    customCell.thumbailImage.image = UIImage(data: data!)
-                }
-            }
-            //Add shadow effect for posts with images
-            customCell.thumbailImage.layer.shadowOffset = CGSize(width: 1, height: 2)
-            customCell.thumbailImage.layer.shadowRadius = 2
-            customCell.thumbailImage.layer.shadowOpacity = 0.4
+        if indexPath.row < parsedDataArray.count {
+            //GET PRE-PARSED DATA ARRAY//
+            let articleDataString = parsedDataArray[indexPath.row]
+            let articleDataArray = articleDataString.components(separatedBy:" [•] ")
             
+            
+            //SET VALUES TO UI LABELS//
+            customCell.rankLabel.text = "Rank: " + articleDataArray[0]
+            customCell.cellLabel.text = articleDataArray[1]
+            customCell.authorLabel.text = articleDataArray[2]
+            //customCell.commentsLabel.text = articleDataArray[3]
+            customCell.timeLabel.text = articleDataArray[4]
+            let thumbString = articleDataArray[5]
+            customCell.loadNextLabel.text = ""
+            customCell.thumbailImage.isHidden = false
+            
+            //CHECK IF POST HAS AN IMAGE//
+            if thumbString == "NO IMAGE" {
+                //No Image Available
+                print(thumbString)
+            } else {
+                //Image Is Available
+                //CONCURRENT LOADING//
+                let url = URL(string: thumbString)
+                DispatchQueue.global().async {
+                    let data = try? Data(contentsOf: url!) //make sure your image in this url does exist, otherwise unwrap in a if let check / try-catch
+                    DispatchQueue.main.async {
+                        customCell.thumbailImage.image = UIImage(data: data!)
+                    }
+                }
+                //Add shadow effect for posts with images
+                customCell.thumbailImage.layer.shadowOffset = CGSize(width: 1, height: 2)
+                customCell.thumbailImage.layer.shadowRadius = 2
+                customCell.thumbailImage.layer.shadowOpacity = 0.4
+                
+            }
+
+        }else {
+            customCell.loadNextLabel.text = "(Pull Up to Load Next Results)"
+            customCell.rankLabel.text = ""
+            customCell.cellLabel.text = ""
+            customCell.authorLabel.text = ""
+            customCell.timeLabel.text = ""
+            customCell.thumbailImage.image = nil
+            customCell.thumbailImage.isHidden = true
         }
+        
+        
         
         
         
@@ -520,53 +564,125 @@ class ViewController: UIViewController, UITableViewDelegate, UITableViewDataSour
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         print("\n\n(TableView:DidSelectRow) \(indexPath.row).")
         
-        activityIndicator.isHidden = false
-        self.saveButton.isEnabled = false
-        
-        
-        //GET PRE-PARSED DATA ARRAY//
-        let articleDataString = parsedDataArray[indexPath.row]
-        let articleDataArray = articleDataString.components(separatedBy:" [•] ")
-        
-        selectedArticleInt = indexPath.row
-        print("Article#: ", selectedArticleInt + 1)
-        
-        //SET VALUES TO UI LABELS//
-        //customCell.cellLabel.text = articleDataArray[0]
-        //customCell.authorLabel.text = articleDataArray[1]
-        //customCell.commentsLabel.text = articleDataArray[2]
-        //customCell.timeLabel.text = articleDataArray[3]
-        let imageURLString = articleDataArray[5]
-        print("SelectedImageURL:", imageURLString)
-        
-        
-        if imageURLString == "NO IMAGE" {
-            print(imageURLString)
-            //Don't open Image View
-        } else {
-            let url = URL(string: imageURLString)
-            DispatchQueue.global().async {
-                let data = try? Data(contentsOf: url!) //make sure your image in this url does exist, otherwise unwrap in a if let check / try-catch
-                DispatchQueue.main.async {
-                    self.articleImageView.image = UIImage(data: data!)
-                    //self.articleImageView.image = UIImage(data: data as Data)
-                    self.activityIndicator.isHidden = true
-                    self.saveButton.isEnabled = true
-                }
-            }
-        
-        
-            //Delay or use loading graphic
-            //Open View with ImageView
-            viewForFullImage.isHidden = false
+        if indexPath.row < parsedDataArray.count {
+            activityIndicator.isHidden = false
+            self.saveButton.isEnabled = false
             
+            
+            //GET PRE-PARSED DATA ARRAY//
+            let articleDataString = parsedDataArray[indexPath.row]
+            let articleDataArray = articleDataString.components(separatedBy:" [•] ")
+            
+            selectedArticleInt = indexPath.row
+            print("Article#: ", selectedArticleInt + 1)
+            
+            //SET VALUES TO UI LABELS//
+            //customCell.cellLabel.text = articleDataArray[0]
+            //customCell.authorLabel.text = articleDataArray[1]
+            //customCell.commentsLabel.text = articleDataArray[2]
+            //customCell.timeLabel.text = articleDataArray[3]
+            let imageURLString = articleDataArray[5]
+            print("SelectedImageURL:", imageURLString)
+            
+            
+            if imageURLString == "NO IMAGE" {
+                print(imageURLString)
+                //Don't open Image View
+            } else {
+                let url = URL(string: imageURLString)
+                DispatchQueue.global().async {
+                    let data = try? Data(contentsOf: url!) //make sure your image in this url does exist, otherwise unwrap in a if let check / try-catch
+                    DispatchQueue.main.async {
+                        self.articleImageView.image = UIImage(data: data!)
+                        //self.articleImageView.image = UIImage(data: data as Data)
+                        self.activityIndicator.isHidden = true
+                        self.saveButton.isEnabled = true
+                    }
+                }
+                
+                
+                //Delay or use loading graphic
+                //Open View with ImageView
+                viewForFullImage.isHidden = false
+                
+            }
+         
+            
+        } else{
+            print("Load Next Results Request...")
+            performSelector(inBackground: #selector(getData(url:)), with: nextResultsString)
         }
-
-        
         
         
         
     }
+    
+    
+    
+    
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        //print("\n\n(scrollViewWillBeginDragging)")
+    }
+    
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        
+        let scrollViewOffset = scrollView.contentOffset.y
+        //print("\nScrollOffset", scrollViewOffset)
+        
+        let scrollViewHeight = scrollView.bounds.height
+        //print("ScrollViewHeight", scrollViewHeight)
+        
+        let scrollViewContentHeight = scrollView.contentSize.height - scrollViewHeight //Account for visible size
+        //print("ScrollViewContentHeight", scrollViewContentHeight)
+        
+        let scrollOffsetValue = scrollViewContentHeight - scrollViewOffset
+        //print("ScrollOffsetValue", scrollOffsetValue)
+        //Value should be 0 when scrolled to bottom
+        //Values will be negative when force-dragged further..... THEN load next list of results
+        
+        if scrollOffsetValue < -150.0 { //Larger negative values increase requred drag/pull strength
+            print("\n(scrollViewDidScroll)")
+            print("PullToLoad Request, Will get next page of results.")
+            
+            
+            performSelector(inBackground: #selector(getData(url:)), with: nextResultsString)
+        }
+    }
+    
+    
+    func scrollViewDidScrollToTop(_ scrollView: UIScrollView) {
+        //print("\n\n(scrollViewDidScrollToTop)")
+    }
+    
+    func scrollViewWillBeginDecelerating(_ scrollView: UIScrollView) {
+        //Let go of touch
+        //print("\n\n(scrollViewWillBeginDecelerating)")
+    }
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        ///print("\n\n(scrollViewDidEndDecelerating)")
+    }
+    
+    func scrollViewWillEndDragging(_ scrollView: UIScrollView, withVelocity velocity: CGPoint, targetContentOffset: UnsafeMutablePointer<CGPoint>) {
+        //While touching screen
+        //print("\n\n(scrollViewWillEndDragging)")
+        let dragVelocity = velocity
+        //print("Velocity: ", dragVelocity)
+    }
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        //While touching screen
+        //print("\n\n(scrollViewDidEndDragging)")
+    }
+    func scrollViewDidEndScrollingAnimation(_ scrollView: UIScrollView) {
+        //print("\n\n(scrollViewDidEndScrollingAnimation)")
+    }
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     
